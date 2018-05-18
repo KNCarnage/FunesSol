@@ -11,6 +11,7 @@
 
 using namespace oxygine;
 
+
 //it is our resources
 //in real project you would have more than one Resources declarations.
 //It is important on mobile devices with limited memory and you would load/unload them
@@ -21,11 +22,15 @@ class MainDeck : public Actor
 public:
 	ResAnim* _deck;
 	ResAnim* _back;
+	spTextField _text;
+	spSprite _button;
 
 	typedef struct
 	{
 		Point	pCard;
 		bool	bOpen;
+		bool	bFlip;
+		spSprite card;
 	} struct_datacards;
 
 	bool bInuse;
@@ -34,30 +39,83 @@ public:
 
 	struct_datacards CardData[52];
 	Vector2 CardBaseSize;
+	float scaleFactor;
 	Vector2 EndPos[2];
+	Vector2 CardSep;
 	int used[52];
+	int jugadas, aciertos,trampas;
 
 	MainDeck()
+	{
+		spTextField button_text;
+		int CardW, CardH, SizeW;
+		_deck = gameResources.getResAnim("cards");
+		_back = gameResources.getResAnim("cardsback");
+		_text = new TextField;
+		_button = new Sprite();
+
+		CardW = _deck->getAttribute("cardwidth").as_int(0);
+		CardH = _deck->getAttribute("cardheight").as_int(0);
+
+		SizeW = getStage()->getWidth() / 13;
+		CardSep.x = (float)(int)(SizeW / 11);
+		CardSep.y = CardSep.x;
+		scaleFactor = (float)SizeW / (float)CardW;
+		CardBaseSize.x = (float)(int)(CardW*scaleFactor);
+		CardBaseSize.y = (float)(int)(CardH*scaleFactor);
+
+		sStackPile[0] = new Sprite();
+		addChild(sStackPile[0]);
+		sStackPile[1] = new Sprite();
+		addChild(sStackPile[1]);
+
+
+
+		_button->setResAnim(gameResources.getResAnim("button"));
+		_button->setAnchor(0.5f, 0.5f);
+		_button->setX(getStage()->getWidth() / 2);
+		_button->setY(getStage()->getHeight() - CardBaseSize.y + _button->getHeight()/2);
+		_button->addEventListener(TouchEvent::TOUCH_UP, CLOSURE(this, &MainDeck::TipHelp));
+		_button->addEventListener(TouchEvent::TOUCH_DOWN, CLOSURE(this, &MainDeck::ButtonResize));
+		addChild(_button);
+		button_text = new TextField();
+		button_text->attachTo(_button);
+		button_text->setPosition(_button->getSize() / 2);
+		TextStyle style = TextStyle(gameResources.getResFont("main")).withColor(Color::White).alignMiddle();
+		button_text->setStyle(style);
+		button_text->setText("Ayuda!");
+
+		CardsShuffle();
+		return;
+	}
+
+	void CardsShuffle(void)
 	{
 		Vector2 Pos;
 		spSprite card;
 
-		_deck = gameResources.getResAnim("cards");
-		_back = gameResources.getResAnim("cardsback");
-
-		CardsCreate();
-
+		bInuse = 0;
+		jugadas = 0;
+		aciertos = 0;
+		trampas = 0;
+		for (int i = 0; i < 52; i++)
+		{
+			used[i] = 0;
+		}
 		for (int col = 0; col < 12; col++)
 		{
 			for (int row = 0; row < 4; row++)
 			{
 				card = new Sprite();
 				addChild(card);
-				CardData[row + (col * 4)].pCard = CardsShf(row + (col*4));
+				CardData[row + (col * 4)].pCard = CardsShf(row + (col * 4));
 				CardData[row + (col * 4)].bOpen = false;
+				CardData[row + (col * 4)].bFlip = false;
+				CardData[row + (col * 4)].card = card;
+				card->setScale(scaleFactor);
 				card->setAnimFrame((_back));
-				Pos.x = col * (card->getWidth() + 10);
-				Pos.y = row * (card->getHeight() + 10);
+				Pos.x = col * (CardBaseSize.x + CardSep.x);
+				Pos.y = row * (CardBaseSize.y + CardSep.y);
 				card->setPosition(Pos);
 				card->setUserData(&CardData[row + (col * 4)]);
 				EventCallback cb = CLOSURE(this, &MainDeck::cardStartFlip);
@@ -72,43 +130,46 @@ public:
 				addChild(card);
 				CardData[row + (col * 4)].pCard = CardsShf(row + (col * 4));
 				CardData[row + (col * 4)].bOpen = false;
+				CardData[row + (col * 4)].bFlip = false;
+				CardData[row + (col * 4)].card = card;
+				card->setScale(scaleFactor);
 				card->setAnimFrame((_back));
-				Pos.x = row * (card->getWidth() + 10);
-				Pos.y = 4 * (card->getHeight() + 10);
+				Pos.x = row * (CardBaseSize.x + CardSep.x);
+				Pos.y = 4 * (CardBaseSize.y + CardSep.y);
 				card->setPosition(Pos);
 				card->setUserData(&CardData[row + (col * 4)]);
 				EventCallback cb = CLOSURE(this, &MainDeck::cardStartFlip);
 				card->addEventListener(TouchEvent::CLICK, cb);
 			}
 		}
-		for (int col = 9; col < 11; col++)
+		for (int col = 0; col < 2; col++)
 		{
-			sStackPile[col - 9] = new Sprite();
-			addChild(sStackPile[col - 9]);
-			sStackPile[col - 9]->setAnimFrame((_back),2);
-			Pos.x = col * (sStackPile[col - 9]->getWidth() + 10);
-			Pos.y = 4 * (sStackPile[col - 9]->getHeight() + 10);
-			sStackPile[col - 9]->setPosition(Pos);
-			EndPos[col - 9] = Pos;
+			sStackPile[col]->setScale(scaleFactor);
+			sStackPile[col]->setAnimFrame((_back), 2);
+			Pos.x = (col+9) * (CardBaseSize.x + CardSep.x);
+			Pos.y = 4 * (CardBaseSize.y + CardSep.y);
+			sStackPile[col]->setPosition(Pos);
+			EndPos[col] = Pos;
 		}
-		CardBaseSize.x = card->getWidth();
-		CardBaseSize.y = card->getHeight();
+		DrawText();
 		return;
 	}
 
 	void cardStopFlip(Event* event)
 	{
-		spSprite* sprite;
+		spSprite sprite;
 		spSprite card;
 		Vector2 srcPos;
 		struct_datacards* dataCard;
 
 		card = new Sprite();
 		addChild(card);
-		sprite = (spSprite*)&(event->target);
-		dataCard = (struct_datacards*)(*sprite)->getUserData();
-		srcPos = (*sprite)->getPosition();
+		sprite = safeSpCast<Sprite>(event->target);
+		dataCard = (struct_datacards*)sprite->getUserData();
+		srcPos = sprite->getPosition();
 		card->setPosition(srcPos);
+		card->setScale(scaleFactor);
+		dataCard->bFlip = false;
 		if (dataCard->bOpen == false)
 		{
 			dataCard->bOpen = true;
@@ -121,6 +182,7 @@ public:
 			EventCallback cb = CLOSURE(this, &MainDeck::cardStartFlip);
 			card->addEventListener(TouchEvent::CLICK, cb);
 		}
+		dataCard->card = card;
 		card->setUserData(dataCard);
 		
 		if (dataCard->bOpen == false)
@@ -141,24 +203,25 @@ public:
 
 	void cardEndFlip(Event* event)
 	{
-		spSprite* sprite;
+		spSprite sprite;
 		spTweenQueue tweenQueue = new TweenQueue();
 		Vector2 srcPos, destPos;
 		struct_datacards* dataCard;
 
-		sprite = (spSprite*)&(event->target);
-		dataCard = (struct_datacards*)(*sprite)->getUserData();
+		sprite = safeSpCast<Sprite>(event->target);
+		dataCard = (struct_datacards*)sprite->getUserData();
+		sprite->setScale(scaleFactor);
 		if (dataCard->bOpen)
-			(*sprite)->setAnimFrame((_back));
+			sprite->setAnimFrame((_back));
 		else
-			(*sprite)->setAnimFrame((_deck), dataCard->pCard.x, dataCard->pCard.y);
-		(*sprite)->addTween(Actor::TweenWidth(CardBaseSize.x), 600, 0, true);
-		srcPos = (*sprite)->getPosition();
-		destPos = Vector2(srcPos.x - CardBaseSize.x / 2, srcPos.y);
+			sprite->setAnimFrame((_deck), dataCard->pCard.x, dataCard->pCard.y);
+		sprite->addTween(Actor::TweenWidth(CardBaseSize.x/scaleFactor), 600, 0, true);
+		srcPos = sprite->getPosition();
+		destPos = Vector2(srcPos.x - (CardBaseSize.x / 2), srcPos.y);
 		tweenQueue->add(Sprite::TweenPosition(destPos), 285, 1);
 
 		tweenQueue->addDoneCallback(CLOSURE(this, &MainDeck::cardStopFlip));
-		(*sprite)->addTween(tweenQueue);
+		sprite->addTween(tweenQueue);
 		tweenQueue->detachWhenDone();
 		return;
 
@@ -166,33 +229,42 @@ public:
 
 	void cardStartFlip(Event* event)
 	{
-		spSprite* sprite;
+		spSprite sprite;
 		spTweenQueue tweenQueue = new TweenQueue();
 		Vector2 srcPos,destPos;
+		struct_datacards* dataCard;
 
-		sprite = (spSprite*)&(event->target);
-		(*sprite)->addTween(Actor::TweenWidth(0), 600, 0, true);
-		srcPos = (*sprite)->getPosition();
-		destPos = Vector2(srcPos.x + (*sprite)->getWidth()/2, srcPos.y);
+		sprite = safeSpCast<Sprite>(event->target);
+		dataCard = (struct_datacards*)sprite->getUserData();
+		if (dataCard->bFlip == true)
+			return;
+		dataCard->bFlip = true;
+		sprite->setUserData(dataCard);
+		sprite->addTween(Actor::TweenWidth(0), 600, 0, true);
+		srcPos = sprite->getPosition();
+		destPos = Vector2(srcPos.x + (CardBaseSize.x / 2), srcPos.y);
 		tweenQueue->add(Sprite::TweenPosition(destPos), 300, 1);
 		tweenQueue->addDoneCallback(CLOSURE(this, &MainDeck::cardEndFlip));
-		(*sprite)->addTween(tweenQueue);
+		sprite->addTween(tweenQueue);
 		return;
 	}
 
 	void cardStackPile(Event* event)
 	{
-		spSprite* sprite;
+		spSprite sprite;
 		Vector2 srcPos;
 		struct_datacards* dataCard;
 
-		sprite = (spSprite*)&(event->target);
-		dataCard = (struct_datacards*)(*sprite)->getUserData();
-		srcPos = (*sprite)->getPosition();
+		sprite = safeSpCast<Sprite>(event->target);
+		dataCard = (struct_datacards*)sprite->getUserData();
+		srcPos = sprite->getPosition();
 		if ((srcPos.x == EndPos[0].x) && (srcPos.y == EndPos[0].y))
 			sStackPile[0]->setAnimFrame((_deck), dataCard->pCard.x, dataCard->pCard.y);
 		else
 			sStackPile[1]->setAnimFrame((_deck), dataCard->pCard.x, dataCard->pCard.y);
+
+		if (aciertos > 25)
+			EndGame();
 		return;
 	}
 
@@ -200,14 +272,21 @@ public:
 	{
 		spTween tween[2];
 		bInuse = false;
+		struct_datacards* dataCard;
 
 		tween[0] = sInuse[0]->addTween(TweenDummy(), 1000);
 		tween[1] = sInuse[1]->addTween(TweenDummy(), 1000);
 
+		jugadas++;
 		if (bHit)
 		{
+			aciertos++;
 			tween[0]->detachWhenDone();
 			tween[1]->detachWhenDone();
+			dataCard = (struct_datacards*)sInuse[0]->getUserData();
+			dataCard->card = NULL;
+			dataCard = (struct_datacards*)sInuse[1]->getUserData();
+			dataCard->card = NULL;
 			sInuse[0]->addTween(Sprite::TweenPosition(EndPos[0]), 1000, 1);
 			sInuse[1]->addTween(Sprite::TweenPosition(EndPos[1]), 1000, 1);
 			tween[0]->addDoneCallback(CLOSURE(this, &MainDeck::cardStackPile));
@@ -223,13 +302,20 @@ public:
 		return;
 	}
 
-	void CardsCreate(void)
+	void DrawText(void)
 	{
-		bInuse = 0;
-		for (int i = 0; i < 52; i++)
-		{
-			used[i] = 0;
-		}
+		char text[255];
+
+		safe_sprintf(text, "Jugadas: %d Aciertos: %d", jugadas, aciertos);
+		TextStyle style = TextStyle(gameResources.getResFont("main")).withColor(Color::White).alignMiddle();
+		_text->setStyle(style);
+		_text->setText(text);
+		_text->setVAlign(TextStyle::VALIGN_BASELINE);
+		_text->setHAlign(TextStyle::HALIGN_MIDDLE);
+		_text->setX(getStage()->getWidth() / 2);
+		_text->setY(getStage()->getHeight() - CardSep.y);
+		_text->attachTo(getStage());
+		return;
 	}
 
 	Point CardsShf(int i)
@@ -285,9 +371,119 @@ public:
 		else
 			return false;
 	}
+
+	void ButtonResize(Event* event)
+	{
+		_button->setScale(1.0f);
+		_button->addTween(Actor::TweenScale(0.9f), 250, 1, false);
+		return;
+	}
+
+	void TipHelp(Event* event)
+	{
+		spSprite sTip[2];
+		spTween tween[2];
+		struct_datacards* dataCard;
+		Point	pSearchCard;
+		time_t t1;
+		int select, found;
+
+		(void)time(&t1);
+		srand((long)t1);
+
+		found = 0;
+
+		_button->addTween(Actor::TweenScale(1.0f), 250, 1, false);
+
+		if (aciertos > 25)
+			return;
+
+		for (select = 0; select < 52; select++)
+		{
+			if (CardData[select].bFlip)
+				return;
+		}
+
+		if (bInuse)
+			sTip[0] = sInuse[0];
+		else
+		{
+			while (!found)
+			{
+				select = rand() % 52;
+				if (CardData[select].card != NULL)
+					found = 1;
+			}
+			sTip[0] = CardData[select].card;
+		}
+		dataCard = (struct_datacards*)sTip[0]->getUserData();
+		pSearchCard.x = dataCard->pCard.x;
+		switch (dataCard->pCard.y)
+		{
+			case CLUB:
+				pSearchCard.y = SPADE;
+			break;
+			case DIAMOND:
+				pSearchCard.y = HEART;
+			break;
+			case HEART:
+				pSearchCard.y = DIAMOND;
+			break;
+			case SPADE:
+				pSearchCard.y = CLUB;
+			break;
+		}
+		for (select = 0; select < 52; select++)
+		{
+			if ((CardData[select].pCard.x == pSearchCard.x) && (CardData[select].pCard.y == pSearchCard.y))
+			{
+				sTip[1] = CardData[select].card;
+				break;
+			}
+		}
+
+		if (!bInuse)
+		{
+			dataCard = (struct_datacards*)sTip[0]->getUserData();
+			dataCard->bOpen = true;
+			tween[0] = sTip[0]->addTween(TweenDummy(), 100);
+			tween[0]->addDoneCallback(CLOSURE(this, &MainDeck::cardStartFlip));
+		}
+		dataCard = (struct_datacards*)sTip[1]->getUserData();
+		if (!dataCard->bFlip)
+		{
+			dataCard->bOpen = true;
+			tween[1] = sTip[1]->addTween(TweenDummy(), 100);
+			tween[1]->addDoneCallback(CLOSURE(this, &MainDeck::cardStartFlip));
+			trampas = trampas + 1;
+		}
+
+		return;
+	}
+
+	void EndGame(void)
+	{
+		spTextField Endtext = new TextField;
+		char text[255];
+
+		safe_sprintf(text, "Felicitaciones ha terminado el Juego en\nJugadas: %d", jugadas);
+		if (trampas)
+			safe_sprintf(text, "%s\nHe hizo %d TRAMPAS", text, trampas);
+		TextStyle style = TextStyle(gameResources.getResFont("main")).withColor(Color::White).alignMiddle();
+		Endtext->setStyle(style);
+		Endtext->setText(text);
+		Endtext->setVAlign(TextStyle::VALIGN_BASELINE);
+		Endtext->setHAlign(TextStyle::HALIGN_MIDDLE);
+		Endtext->setX(getStage()->getWidth() / 2);
+		Endtext->setY(getStage()->getHeight() / 2);
+		Endtext->attachTo(getStage());
+		return;
+	}
+
 };
 
 typedef oxygine::intrusive_ptr<MainDeck> spMainDeck;
+spMainDeck MainActor;
 
 void example_preinit() {}
 
@@ -299,17 +495,18 @@ void example_init()
 
 
     //lets create our client code simple actor
-    //spMainActor was defined above as smart intrusive pointer (read more: http://www.boost.org/doc/libs/1_60_0/libs/smart_ptr/intrusive_ptr.html)
-	spMainDeck actor = new MainDeck;
+    //spMainDeck was defined above as smart intrusive pointer (read more: http://www.boost.org/doc/libs/1_60_0/libs/smart_ptr/intrusive_ptr.html)
+	MainActor = new MainDeck;
 
     //and add it to Stage as child
-    getStage()->addChild(actor);
+    getStage()->addChild(MainActor);
 }
 
 
 //called each frame from main.cpp
 void example_update()
 {
+	MainActor->DrawText();
 }
 
 //called each frame from main.cpp

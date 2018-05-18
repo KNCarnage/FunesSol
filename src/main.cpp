@@ -30,7 +30,7 @@ int mainloop()
 
     if (core::beginRendering())
     {
-        Color clearColor(32, 32, 32, 255);
+        Color clearColor(0, 80, 0, 255);
         Rect viewport(Point(0, 0), core::getDisplaySize());
         // Render all actors inside the stage. Actor::render will also be called for all its children
         getStage()->render(clearColor, viewport);
@@ -48,11 +48,12 @@ void run()
 
     // Initialize Oxygine's internal stuff
     core::init_desc desc;
-    desc.title = "Oxygine Application";
+    desc.title = "Funes Solitario";
 
     // The initial window size can be set up here on SDL builds, ignored on Mobile devices
-    desc.w = 1280;
-    desc.h = 720;
+	desc.w = 1280;
+	desc.h = 720;
+
 
 
     example_preinit();
@@ -65,7 +66,8 @@ void run()
     getStage()->setSize(size);
 
     // DebugActor is a helper actor node. It shows FPS, memory usage and other useful stuff
-    DebugActor::show();
+//   DebugActor::show();
+	DebugActor::hide();
 
     // Initializes our example game. See example.cpp
     example_init();

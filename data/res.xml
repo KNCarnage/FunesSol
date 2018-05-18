@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 <resources>
 	<set path = "images" />
-	<set scale_factor = "0.54" />
 	<atlas>
-		<image file="cards.png"  cols = "13" rows = "4" />
-		<image file="cardsback.png" cols = "4"/>		
+		<image file="cards.png"  cols = "13" rows = "4" cardwidth = "180" cardheight = "251"/>
+		<image file="cardsback.png" cols = "4" cardwidth = "180" cardheight = "251"/>
+		<image file="button.png"/>	
 	</atlas>
-	
 	<set path = "fonts" />
 	<font file="main.fnt" />	
 </resources>
