@@ -69,8 +69,6 @@ public:
 		sStackPile[1] = new Sprite();
 		addChild(sStackPile[1]);
 
-
-
 		_button->setResAnim(gameResources.getResAnim("button"));
 		_button->setAnchor(0.5f, 0.5f);
 		_button->setX(getStage()->getWidth() / 2);
@@ -79,12 +77,12 @@ public:
 		_button->addEventListener(TouchEvent::TOUCH_DOWN, CLOSURE(this, &MainDeck::ButtonResize));
 		addChild(_button);
 		button_text = new TextField();
+		button_text->setName("button_text");
 		button_text->attachTo(_button);
 		button_text->setPosition(_button->getSize() / 2);
 		TextStyle style = TextStyle(gameResources.getResFont("main")).withColor(Color::White).alignMiddle();
 		button_text->setStyle(style);
-		button_text->setText("Ayuda!");
-
+		button_text->removeEventListener(TouchEvent::TOUCH_UP, CLOSURE(this, &MainDeck::TipHelp));
 		CardsShuffle();
 		return;
 	}
@@ -93,11 +91,17 @@ public:
 	{
 		Vector2 Pos;
 		spSprite card;
+		spTextField button_text;
 
 		bInuse = 0;
 		jugadas = 0;
 		aciertos = 0;
 		trampas = 0;
+
+
+		button_text = this->getDescendantT<TextField>("button_text", ep_ignore_error);
+		button_text->setText("Ayuda!");
+
 		for (int i = 0; i < 52; i++)
 		{
 			used[i] = 0;
@@ -379,6 +383,13 @@ public:
 		return;
 	}
 
+	void RestartGame(Event* event)
+	{
+		if (aciertos > 25)
+			CardsShuffle();
+		return;
+	}
+
 	void TipHelp(Event* event)
 	{
 		spSprite sTip[2];
@@ -396,7 +407,10 @@ public:
 		_button->addTween(Actor::TweenScale(1.0f), 250, 1, false);
 
 		if (aciertos > 25)
+		{
+			CheckEndGame();
 			return;
+		}
 
 		for (select = 0; select < 52; select++)
 		{
@@ -463,23 +477,46 @@ public:
 
 	void EndGame(void)
 	{
-		spTextField Endtext = new TextField;
+		spTextField Endtext;
 		char text[255];
+
+		Endtext = getStage()->getDescendantT<TextField>("EndText", ep_ignore_error);
+		if (Endtext)
+			return;
 
 		safe_sprintf(text, "Felicitaciones ha terminado el Juego en\nJugadas: %d", jugadas);
 		if (trampas)
 			safe_sprintf(text, "%s\nHe hizo %d TRAMPAS", text, trampas);
 		TextStyle style = TextStyle(gameResources.getResFont("main")).withColor(Color::White).alignMiddle();
+		Endtext = new TextField;
 		Endtext->setStyle(style);
 		Endtext->setText(text);
 		Endtext->setVAlign(TextStyle::VALIGN_BASELINE);
 		Endtext->setHAlign(TextStyle::HALIGN_MIDDLE);
 		Endtext->setX(getStage()->getWidth() / 2);
 		Endtext->setY(getStage()->getHeight() / 2);
+		Endtext->setName("EndText");
 		Endtext->attachTo(getStage());
+
+		Endtext = this->getDescendantT<TextField>("button_text", ep_ignore_error);
+		Endtext->setText("Jugar");
 		return;
 	}
 
+	void CheckEndGame(void)
+	{
+		spTextField Endtext;
+		spTween tween;
+
+		Endtext = getStage()->getDescendantT<TextField>("EndText", ep_ignore_error);
+		if (Endtext)
+		{
+			tween = Endtext->addTween(TweenDummy(), 100);
+			tween->detachWhenDone();
+			tween->addDoneCallback(CLOSURE(this, &MainDeck::RestartGame));
+		}
+		return;
+	}
 };
 
 typedef oxygine::intrusive_ptr<MainDeck> spMainDeck;
