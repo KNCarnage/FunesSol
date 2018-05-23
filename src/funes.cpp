@@ -57,7 +57,7 @@ public:
 		CardW = _deck->getAttribute("cardwidth").as_int(0);
 		CardH = _deck->getAttribute("cardheight").as_int(0);
 
-		SizeW = getStage()->getWidth() / 13;
+		SizeW = (int)(getStage()->getWidth() / 13);
 		CardSep.x = (float)(int)(SizeW / 11);
 		CardSep.y = CardSep.x;
 		scaleFactor = (float)SizeW / (float)CardW;
@@ -117,9 +117,10 @@ public:
 				CardData[row + (col * 4)].bFlip = false;
 				CardData[row + (col * 4)].card = card;
 				card->setScale(scaleFactor);
+				card->setAnchor(0.5f, 0.5f);
 				card->setAnimFrame((_back));
-				Pos.x = col * (CardBaseSize.x + CardSep.x);
-				Pos.y = row * (CardBaseSize.y + CardSep.y);
+				Pos.x = col * (CardBaseSize.x + CardSep.x) + CardBaseSize.x/2;
+				Pos.y = row * (CardBaseSize.y + CardSep.y) + CardBaseSize.y/2;
 				card->setPosition(Pos);
 				card->setUserData(&CardData[row + (col * 4)]);
 				EventCallback cb = CLOSURE(this, &MainDeck::cardStartFlip);
@@ -137,9 +138,10 @@ public:
 				CardData[row + (col * 4)].bFlip = false;
 				CardData[row + (col * 4)].card = card;
 				card->setScale(scaleFactor);
+				card->setAnchor(0.5f, 0.5f);
 				card->setAnimFrame((_back));
-				Pos.x = row * (CardBaseSize.x + CardSep.x);
-				Pos.y = 4 * (CardBaseSize.y + CardSep.y);
+				Pos.x = row * (CardBaseSize.x + CardSep.x) + CardBaseSize.x/2;
+				Pos.y = 4 * (CardBaseSize.y + CardSep.y) + CardBaseSize.y/2;
 				card->setPosition(Pos);
 				card->setUserData(&CardData[row + (col * 4)]);
 				EventCallback cb = CLOSURE(this, &MainDeck::cardStartFlip);
@@ -149,9 +151,10 @@ public:
 		for (int col = 0; col < 2; col++)
 		{
 			sStackPile[col]->setScale(scaleFactor);
+			sStackPile[col]->setAnchor(0.5f, 0.5f);
 			sStackPile[col]->setAnimFrame((_back), 2);
-			Pos.x = (col+9) * (CardBaseSize.x + CardSep.x);
-			Pos.y = 4 * (CardBaseSize.y + CardSep.y);
+			Pos.x = (col+9) * (CardBaseSize.x + CardSep.x) + CardBaseSize.x / 2;
+			Pos.y = 4 * (CardBaseSize.y + CardSep.y) + CardBaseSize.y / 2;
 			sStackPile[col]->setPosition(Pos);
 			EndPos[col] = Pos;
 		}
@@ -173,6 +176,7 @@ public:
 		srcPos = sprite->getPosition();
 		card->setPosition(srcPos);
 		card->setScale(scaleFactor);
+		card->setAnchor(0.5f, 0.5f);
 		dataCard->bFlip = false;
 		if (dataCard->bOpen == false)
 		{
@@ -208,25 +212,20 @@ public:
 	void cardEndFlip(Event* event)
 	{
 		spSprite sprite;
-		spTweenQueue tweenQueue = new TweenQueue();
-		Vector2 srcPos, destPos;
+		spTween tween;
 		struct_datacards* dataCard;
 
 		sprite = safeSpCast<Sprite>(event->target);
 		dataCard = (struct_datacards*)sprite->getUserData();
 		sprite->setScale(scaleFactor);
+		sprite->setAnchor(0.5f, 0.5f);
 		if (dataCard->bOpen)
 			sprite->setAnimFrame((_back));
 		else
 			sprite->setAnimFrame((_deck), dataCard->pCard.x, dataCard->pCard.y);
-		sprite->addTween(Actor::TweenWidth(CardBaseSize.x/scaleFactor), 600, 0, true);
-		srcPos = sprite->getPosition();
-		destPos = Vector2(srcPos.x - (CardBaseSize.x / 2), srcPos.y);
-		tweenQueue->add(Sprite::TweenPosition(destPos), 285, 1);
-
-		tweenQueue->addDoneCallback(CLOSURE(this, &MainDeck::cardStopFlip));
-		sprite->addTween(tweenQueue);
-		tweenQueue->detachWhenDone();
+		tween = sprite->addTween(Actor::TweenWidth(CardBaseSize.x/scaleFactor), 300, 1, false);
+		tween->addDoneCallback(CLOSURE(this, &MainDeck::cardStopFlip));
+		tween->detachWhenDone();
 		return;
 
 	}
@@ -234,8 +233,7 @@ public:
 	void cardStartFlip(Event* event)
 	{
 		spSprite sprite;
-		spTweenQueue tweenQueue = new TweenQueue();
-		Vector2 srcPos,destPos;
+		spTween tween;
 		struct_datacards* dataCard;
 
 		sprite = safeSpCast<Sprite>(event->target);
@@ -244,12 +242,8 @@ public:
 			return;
 		dataCard->bFlip = true;
 		sprite->setUserData(dataCard);
-		sprite->addTween(Actor::TweenWidth(0), 600, 0, true);
-		srcPos = sprite->getPosition();
-		destPos = Vector2(srcPos.x + (CardBaseSize.x / 2), srcPos.y);
-		tweenQueue->add(Sprite::TweenPosition(destPos), 300, 1);
-		tweenQueue->addDoneCallback(CLOSURE(this, &MainDeck::cardEndFlip));
-		sprite->addTween(tweenQueue);
+		tween = sprite->addTween(Actor::TweenWidth(0), 300, 1, false);
+		tween->addDoneCallback(CLOSURE(this, &MainDeck::cardEndFlip));
 		return;
 	}
 
@@ -522,10 +516,10 @@ public:
 typedef oxygine::intrusive_ptr<MainDeck> spMainDeck;
 spMainDeck MainActor;
 
-void example_preinit() {}
+void funes_preinit() {}
 
 //called from main.cpp
-void example_init()
+void funes_init()
 {
     //load xml file with resources definition
     gameResources.loadXML("res.xml");
@@ -541,13 +535,13 @@ void example_init()
 
 
 //called each frame from main.cpp
-void example_update()
+void funes_update()
 {
 	MainActor->DrawText();
 }
 
 //called each frame from main.cpp
-void example_destroy()
+void funes_destroy()
 {
     //free previously loaded resources
     gameResources.free();

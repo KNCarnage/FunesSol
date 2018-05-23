@@ -7,7 +7,7 @@
 #include "ox/oxygine.hpp"
 #include "ox/Stage.hpp"
 #include "ox/DebugActor.hpp"
-#include "example.h"
+#include "funes.h"
 
 
 using namespace oxygine;
@@ -22,7 +22,7 @@ int mainloop()
     bool done = core::update();
 
     // It gets passed to our example game implementation
-    example_update();
+    funes_update();
 
     // Update our stage
     // Update all actors. Actor::update will also be called for all its children
@@ -30,7 +30,7 @@ int mainloop()
 
     if (core::beginRendering())
     {
-        Color clearColor(0, 80, 0, 255);
+        Color clearColor(0, 91, 19, 255);
         Rect viewport(Point(0, 0), core::getDisplaySize());
         // Render all actors inside the stage. Actor::render will also be called for all its children
         getStage()->render(clearColor, viewport);
@@ -56,7 +56,7 @@ void run()
 
 
 
-    example_preinit();
+    funes_preinit();
     core::init(&desc);
 
 
@@ -70,7 +70,7 @@ void run()
 	DebugActor::hide();
 
     // Initializes our example game. See example.cpp
-    example_init();
+    funes_init();
 
 #ifdef EMSCRIPTEN
     /*
@@ -108,7 +108,7 @@ void run()
     */
 
     // See example.cpp for the shutdown function implementation
-    example_destroy();
+    funes_destroy();
 
 
     //renderer.cleanup();
